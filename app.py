@@ -47,7 +47,7 @@ TEXT_DIM = "#5a6070"
 TEXT_MID = "#8a8fa0"
 
 # ---------------------------------------------------------------------------
-# CSS — Cyberpunk / Grafana Dark — 1920x1080 single viewport
+# CSS — Cyberpunk / Grafana Dark (original layout, no zoom)
 # ---------------------------------------------------------------------------
 
 CYBER_CSS = f"""
@@ -55,39 +55,33 @@ CYBER_CSS = f"""
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
 
 /* === GLOBAL === */
-html {{ zoom: 1.8; }}
-@media (min-width: 2400px) {{ html {{ zoom: 2.0; }} }}
 .stApp {{ background: {BG_DARK} !important; }}
-.block-container {{
-    padding: 0.4rem 0.5rem 0 0.5rem !important;
-    max-width: 100% !important;
-}}
+.block-container {{ padding: 0.4rem 0.8rem 0.2rem 0.8rem !important; max-width: 100% !important; }}
 header[data-testid="stHeader"] {{ display: none !important; }}
 [data-testid="stBottom"] {{ display: none !important; }}
-[data-testid="stVerticalBlock"] {{ gap: 0.15rem !important; }}
-[data-testid="stHorizontalBlock"] {{ gap: 0.35rem !important; }}
+[data-testid="stHorizontalBlock"] {{ gap: 0.4rem !important; }}
 
 /* === TITLE BAR === */
 .cyber-header {{
     display: flex; align-items: center; justify-content: space-between;
-    padding: 3px 0; margin-bottom: 2px;
+    padding: 6px 0; margin-bottom: 4px;
     border-bottom: 1px solid {CARD_BORDER};
 }}
 .cyber-title {{
-    font-family: 'Orbitron', monospace; font-size: 0.95rem; font-weight: 700;
+    font-family: 'Orbitron', monospace; font-size: 1.15rem; font-weight: 700;
     color: {NEON_CYAN}; letter-spacing: 2px; text-transform: uppercase;
     text-shadow: 0 0 20px rgba(0,240,255,0.3);
 }}
 .cyber-subtitle {{
-    font-family: 'JetBrains Mono', monospace; font-size: 0.5rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
     color: {TEXT_DIM}; letter-spacing: 1px;
 }}
 
 /* === SECTION HEADERS === */
 .section-label {{
-    font-family: 'Orbitron', monospace; font-size: 0.55rem; font-weight: 700;
+    font-family: 'Orbitron', monospace; font-size: 0.65rem; font-weight: 700;
     color: {NEON_PURPLE}; letter-spacing: 3px; text-transform: uppercase;
-    margin: 3px 0 2px 0; padding-bottom: 1px;
+    margin: 8px 0 4px 0; padding-bottom: 2px;
     border-bottom: 1px solid rgba(191,0,255,0.2);
     text-shadow: 0 0 12px rgba(191,0,255,0.3);
 }}
@@ -95,7 +89,7 @@ header[data-testid="stHeader"] {{ display: none !important; }}
 /* === CARDS === */
 .cyber-card {{
     background: {CARD_BG}; border: 1px solid {CARD_BORDER};
-    border-radius: 4px; padding: 4px 8px; margin-bottom: 2px;
+    border-radius: 6px; padding: 8px 10px; margin-bottom: 4px;
     box-shadow: 0 0 8px rgba(0,240,255,0.04), inset 0 1px 0 rgba(0,240,255,0.05);
     position: relative; overflow: hidden;
 }}
@@ -104,64 +98,56 @@ header[data-testid="stHeader"] {{ display: none !important; }}
     background: linear-gradient(90deg, transparent, {NEON_CYAN}40, transparent);
 }}
 .card-title {{
-    font-family: 'Orbitron', monospace; font-size: 0.5rem; font-weight: 700;
+    font-family: 'Orbitron', monospace; font-size: 0.6rem; font-weight: 700;
     color: {TEXT_MID}; letter-spacing: 1.5px; text-transform: uppercase;
-    margin-bottom: 3px;
-}}
-.card-subtitle {{
-    font-family: 'JetBrains Mono', monospace; font-size: 0.4rem;
-    color: {TEXT_DIM}; margin-left: 4px;
+    margin-bottom: 6px;
 }}
 
 /* === METRICS === */
 .neon-val {{
-    font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 700;
     color: {NEON_CYAN}; line-height: 1;
     text-shadow: 0 0 15px rgba(0,240,255,0.25);
 }}
 .neon-val-sm {{
-    font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700;
     color: {NEON_CYAN}; line-height: 1;
 }}
 .neon-val-green {{ color: {NEON_GREEN} !important; text-shadow: 0 0 12px rgba(0,255,136,0.25); }}
 .neon-val-red {{ color: {NEON_RED} !important; text-shadow: 0 0 12px rgba(255,51,102,0.25); }}
 .neon-val-purple {{ color: {NEON_PURPLE} !important; text-shadow: 0 0 12px rgba(191,0,255,0.25); }}
 .metric-label {{
-    font-family: 'JetBrains Mono', monospace; font-size: 0.45rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
     color: {TEXT_DIM}; letter-spacing: 0.5px; text-transform: uppercase;
-    margin-bottom: 0px;
+    margin-bottom: 1px;
 }}
-.metric-row {{ display: flex; gap: 10px; flex-wrap: wrap; }}
-.metric-item {{ min-width: 40px; }}
+.metric-row {{ display: flex; gap: 12px; flex-wrap: wrap; }}
+.metric-item {{ min-width: 50px; }}
 
 /* === PILLS === */
-.pill-row {{ display: flex; flex-wrap: wrap; gap: 3px; margin: 2px 0; }}
+.pill-row {{ display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }}
 .pill {{
     font-family: 'JetBrains Mono', monospace; display: inline-block;
-    padding: 1px 6px; border-radius: 10px; font-size: 0.5rem; font-weight: 500;
+    padding: 2px 8px; border-radius: 10px; font-size: 0.55rem; font-weight: 500;
 }}
 .pill-ok {{ background: rgba(0,255,136,0.1); color: {NEON_GREEN}; border: 1px solid rgba(0,255,136,0.25); }}
 .pill-wait {{ background: rgba(255,187,36,0.1); color: #fbbf24; border: 1px solid rgba(255,187,36,0.25); }}
 .pill-info {{ background: rgba(0,240,255,0.1); color: {NEON_CYAN}; border: 1px solid rgba(0,240,255,0.2); }}
 
-/* === PLOTLY FIX === */
-[data-testid="stPlotlyChart"] {{
-    min-height: 40px !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}}
-
 /* === MISC === */
-.dim-text {{ font-family: 'JetBrains Mono', monospace; font-size: 0.45rem; color: {TEXT_DIM}; }}
+.dim-text {{ font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: {TEXT_DIM}; }}
 .footer-bar {{
     text-align: center; font-family: 'JetBrains Mono', monospace;
-    font-size: 0.4rem; color: {TEXT_DIM}; margin-top: 2px;
-    border-top: 1px solid {CARD_BORDER}; padding-top: 2px;
+    font-size: 0.5rem; color: {TEXT_DIM}; margin-top: 4px;
+    border-top: 1px solid {CARD_BORDER}; padding-top: 3px;
 }}
 .footer-bar a {{ color: {NEON_CYAN}; text-decoration: none; }}
 
-/* === HIDE streamlit default elements === */
+/* === HIDE default streamlit metric (we use custom HTML) === */
 [data-testid="stMetric"] {{ display: none !important; }}
+
+/* === Plotly chart container === */
+[data-testid="stPlotlyChart"] {{ margin: -4px 0 !important; }}
 </style>
 """
 
@@ -288,28 +274,27 @@ def make_pypi_chart(df: pd.DataFrame, color: str = NEON_CYAN) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=df["label"], y=df["downloads"], marker_color=color,
-        texttemplate="%{y:,}",
-        textposition="inside",
-        textangle=0,
-        textfont=dict(size=9, color="#fff"),
+        text=df["downloads"].apply(lambda v: f"{v:,}" if v > 0 else ""),
+        textposition="outside",
+        textfont=dict(size=11, color="#888"),
         hovertemplate="%{x}: %{y:,}<extra></extra>",
-        cliponaxis=False,
     ))
     fig.update_layout(
-        height=150,
-        margin=dict(l=5, r=5, t=5, b=20),
+        height=200,
+        margin=dict(l=30, r=10, t=20, b=25),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(
             showgrid=False, color="#888",
-            tickfont=dict(size=10, color="#888"),
+            tickfont=dict(size=11, color="#888"),
             type="category",
         ),
         yaxis=dict(
-            showgrid=False, showticklabels=False,
+            showgrid=True, gridcolor="rgba(255,255,255,0.04)",
+            color="#888", tickfont=dict(size=11, color="#888"),
         ),
-        font=dict(size=10),
-        bargap=0.2,
+        font=dict(size=11),
+        bargap=0.25,
         showlegend=False,
         dragmode=False,
     )
@@ -317,11 +302,7 @@ def make_pypi_chart(df: pd.DataFrame, color: str = NEON_CYAN) -> go.Figure:
 
 
 def make_traffic_chart(timestamps: list, counts: list, color: str = NEON_CYAN) -> go.Figure:
-    """Line chart for GitHub traffic views. Last 7 days only."""
-    if len(timestamps) > 7:
-        timestamps = timestamps[-7:]
-        counts = counts[-7:]
-
+    """Line chart for GitHub traffic views."""
     labels = []
     for ts in timestamps:
         try:
@@ -340,21 +321,21 @@ def make_traffic_chart(timestamps: list, counts: list, color: str = NEON_CYAN) -
     ))
     y_max = max(counts) if counts else 1
     fig.update_layout(
-        height=120,
-        margin=dict(l=30, r=5, t=5, b=20),
+        height=180,
+        margin=dict(l=35, r=10, t=10, b=25),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(
             showgrid=False, color="#888",
-            tickfont=dict(size=10, color="#888"),
+            tickfont=dict(size=11, color="#888"),
             type="category",
         ),
         yaxis=dict(
             showgrid=True, gridcolor="rgba(255,255,255,0.04)",
-            color="#888", tickfont=dict(size=10, color="#888"),
+            color="#888", tickfont=dict(size=11, color="#888"),
             range=[0, y_max * 1.2],
         ),
-        font=dict(size=10),
+        font=dict(size=11),
         showlegend=False,
         dragmode=False,
     )
@@ -371,20 +352,20 @@ def make_referrer_chart(refs: list, color: str = NEON_CYAN) -> go.Figure:
         marker_color=color, marker_opacity=0.6,
         text=[f"{v:,}" for v in values],
         textposition="outside",
-        textfont=dict(size=9, color="#888"),
+        textfont=dict(size=11, color="#888"),
         hovertemplate="%{y}: %{x:,}<extra></extra>",
     ))
     fig.update_layout(
-        height=150,
-        margin=dict(l=110, r=35, t=5, b=5),
+        height=200,
+        margin=dict(l=120, r=40, t=5, b=5),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(showgrid=False, showticklabels=False),
         yaxis=dict(
             showgrid=False, color="#888",
-            tickfont=dict(size=9, color="#aaa"),
+            tickfont=dict(size=11, color="#aaa"),
         ),
-        font=dict(size=9),
+        font=dict(size=11),
         showlegend=False,
         dragmode=False,
         bargap=0.3,
@@ -401,9 +382,8 @@ def metric_html(label: str, value: str, css_class: str = "neon-val-sm") -> str:
     return f'<div class="metric-item"><div class="metric-label">{label}</div><div class="{css_class}">{value}</div></div>'
 
 
-def card_open(title: str, subtitle: str = "") -> str:
-    sub = f'<span class="card-subtitle">{subtitle}</span>' if subtitle else ""
-    return f'<div class="cyber-card"><div class="card-title">{title}{sub}</div>'
+def card_open(title: str) -> str:
+    return f'<div class="cyber-card"><div class="card-title">{title}</div>'
 
 
 CARD_CLOSE = '</div>'
@@ -423,7 +403,7 @@ now_str = datetime.now(TW).strftime("%Y-%m-%d %H:%M CST")
 st.markdown(f'''
 <div class="cyber-header">
     <div class="cyber-title">MNEMOX COMMAND CENTER</div>
-    <div class="cyber-subtitle">🔄 {now_str} &nbsp;|&nbsp; Mnemox AI</div>
+    <div class="cyber-subtitle">🔄 更新 {now_str} &nbsp;|&nbsp; Built by Mnemox AI</div>
 </div>
 ''', unsafe_allow_html=True)
 
@@ -456,11 +436,11 @@ for col, repo in zip([c1, c2, c3], REPOS):
         html += metric_html("⭐ Stars", f"{stars:,}", "neon-val")
         html += metric_html("🍴 Forks", f"{forks:,}", "neon-val-sm")
         html += '</div>'
-        html += '<div class="metric-row" style="margin-top:2px">'
+        html += '<div class="metric-row" style="margin-top:4px">'
         html += metric_html("Issues", str(issues), "neon-val-sm neon-val-green" if issues == 0 else "neon-val-sm neon-val-red")
         html += metric_html("PRs", str(prs), "neon-val-sm neon-val-green" if prs == 0 else "neon-val-sm neon-val-red")
         html += '</div>'
-        html += f'<div class="dim-text" style="margin-top:1px">{data.get("language", "")} · {updated}</div>'
+        html += f'<div class="dim-text" style="margin-top:3px">{data.get("language", "")} · {updated}</div>'
         html += CARD_CLOSE
         st.markdown(html, unsafe_allow_html=True)
 
@@ -470,14 +450,13 @@ for col, pkg in zip([c4, c5], PYPI_PACKAGES):
     df_daily = fetch_pypi_daily(pkg)
     short = pkg.split("-")[0]  # "idea" / "tradememory"
     chart_color = NEON_CYAN if "idea" in pkg else NEON_PURPLE
-    latest_date = df_daily["date"].iloc[-1] if df_daily is not None and not df_daily.empty else "?"
 
     with col:
-        html = card_open(f"PyPI: {short}", f"至 {latest_date}")
+        html = card_open(f"PyPI: {short}")
         html += '<div class="metric-row">'
         html += metric_html("日 Day", f"{summary['last_day']:,}", "neon-val")
         html += '</div>'
-        html += '<div class="metric-row" style="margin-top:1px">'
+        html += '<div class="metric-row" style="margin-top:2px">'
         html += metric_html("週 Week", f"{summary['last_week']:,}", "neon-val-sm neon-val-purple")
         html += metric_html("月 Month", f"{summary['last_month']:,}", "neon-val-sm")
         html += '</div>'
@@ -491,25 +470,25 @@ for col, pkg in zip([c4, c5], PYPI_PACKAGES):
             st.markdown('<div class="dim-text">數據載入中...</div>', unsafe_allow_html=True)
 
 # ===========================================================================
-# ROW 2: Traffic + Referrers + Website + Trading
+# ROW 2: Traffic / Referrers / Website / Trading
 # ===========================================================================
 
 st.markdown('<div class="section-label">TRAFFIC &nbsp;/&nbsp; 網站 &nbsp;/&nbsp; 交易 NG_GOLD</div>', unsafe_allow_html=True)
 
 r1, r2, r3, r4 = st.columns([2.5, 2.5, 1.5, 1.5])
 
-# --- Traffic (14D totals from API, 7D chart) ---
+# --- Traffic ---
 with r1:
     if GITHUB_TOKEN:
         traffic = fetch_github_traffic("mnemox-ai/idea-reality-mcp")
         views = traffic.get("views", {})
         clones = traffic.get("clones", {})
-        html = card_open("IDEA-REALITY 流量 14D")
+        html = card_open("IDEA-REALITY-MCP 流量 14D")
         html += '<div class="metric-row">'
-        html += metric_html("Views", f"{views.get('count', 0):,}", "neon-val")
-        html += metric_html("Uniq", f"{views.get('uniques', 0):,}", "neon-val-sm")
+        html += metric_html("瀏覽 Views", f"{views.get('count', 0):,}", "neon-val")
+        html += metric_html("獨立 Uniq", f"{views.get('uniques', 0):,}", "neon-val-sm")
         html += metric_html("Clone", f"{clones.get('count', 0):,}", "neon-val-sm neon-val-purple")
-        html += metric_html("Uniq", f"{clones.get('uniques', 0):,}", "neon-val-sm")
+        html += metric_html("獨立 Uniq", f"{clones.get('uniques', 0):,}", "neon-val-sm")
         html += '</div>'
         html += CARD_CLOSE
         st.markdown(html, unsafe_allow_html=True)
@@ -562,16 +541,16 @@ with r3:
 with r4:
     html = card_open("交易 NG_GOLD")
     html += '<div class="metric-row">'
-    html += metric_html("餘額", "$9,863", "neon-val-sm neon-val-green")
+    html += metric_html("餘額 Balance", "$9,863", "neon-val-sm neon-val-green")
     html += '</div>'
-    html += '<div class="metric-row" style="margin-top:1px">'
-    html += metric_html("交易", "7", "neon-val-sm")
-    html += metric_html("勝率", "42.9%", "neon-val-sm")
+    html += '<div class="metric-row" style="margin-top:2px">'
+    html += metric_html("交易 Trades", "7", "neon-val-sm")
+    html += metric_html("勝率 WR", "42.9%", "neon-val-sm")
     html += '</div>'
-    html += '<div class="metric-row" style="margin-top:1px">'
-    html += metric_html("損益", "-$69.99", "neon-val-sm neon-val-red")
+    html += '<div class="metric-row" style="margin-top:2px">'
+    html += metric_html("損益 PnL", "-$69.99", "neon-val-sm neon-val-red")
     html += '</div>'
-    html += f'<div class="dim-text">Shadow Mode · 手動更新</div>'
+    html += f'<div class="dim-text" style="margin-top:3px">Shadow Mode · 手動更新</div>'
     html += CARD_CLOSE
     st.markdown(html, unsafe_allow_html=True)
 
@@ -585,7 +564,7 @@ d1, d2 = st.columns([1.2, 2.8])
 
 with d1:
     pr = fetch_pr_state("punkpeye/awesome-mcp-servers", 2346)
-    html = card_open("PR TRACKER")
+    html = card_open("待處理 PR TRACKER")
     html += f'<div class="dim-text">awesome-mcp #2346 — <span class="pill pill-info">{pr["state"]}</span> {pr["comments"]}💬</div>'
     for name in ["ClaudeMCP #45", "mcp-get #176", "Fleur #37"]:
         html += f'<div class="dim-text">{name} — <span class="pill pill-wait">⏳</span></div>'
@@ -595,7 +574,7 @@ with d1:
 with d2:
     ok_channels = ["PyPI", "MCP Registry", "Smithery", "Glama", "Dev.to", "PulseMCP", "MCP Market"]
     wait_channels = ["awesome-mcp", "Marketplace"]
-    html = card_open(f"CHANNELS — {len(ok_channels)}✅ {len(wait_channels)}⏳")
+    html = card_open(f"發布平台 CHANNELS — {len(ok_channels)}✅ {len(wait_channels)}⏳")
     html += '<div class="pill-row">'
     for ch in ok_channels:
         html += f'<span class="pill pill-ok">{ch}</span>'
@@ -608,8 +587,8 @@ with d2:
 # === FOOTER ===
 st.markdown(f'''
 <div class="footer-bar">
-    <a href="https://mnemox.ai">Mnemox AI</a> ·
-    <a href="https://github.com/mnemox-ai/idea-reality-mcp">idea-reality-mcp</a> ·
+    <a href="https://mnemox.ai">Mnemox AI</a> &nbsp;·&nbsp;
+    <a href="https://github.com/mnemox-ai/idea-reality-mcp">idea-reality-mcp</a> &nbsp;·&nbsp;
     <a href="https://github.com/mnemox-ai/tradememory-protocol">tradememory-protocol</a>
 </div>
 ''', unsafe_allow_html=True)
