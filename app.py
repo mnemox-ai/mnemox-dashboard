@@ -1,10 +1,10 @@
-"""Mnemox Metrics Dashboard — 全專案一頁總覽
+"""Mnemox Metrics Dashboard — Cyberpunk Edition
 
-單檔 Streamlit app，中文介面，超密集佈局，3 秒看完全部。
-資料來源：GitHub API, pypistats API, 手動 JSON。
+Single-file Streamlit app. Neon-dark UI, all data in one viewport.
+Data: GitHub API, pypistats API, manual JSON.
 
 Usage:  streamlit run app.py
-Env:    GITHUB_TOKEN (optional, 提高 rate limit + 啟用 traffic 數據)
+Env:    GITHUB_TOKEN (optional)
 """
 
 import json
@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
+import plotly.graph_objects as go
 import requests
 import streamlit as st
 
@@ -29,67 +30,129 @@ REPOS = [
 ]
 PYPI_PACKAGES = ["idea-reality-mcp", "tradememory-protocol"]
 WEBSITE_DATA_FILE = Path(__file__).parent / "website_traffic.json"
-CACHE_TTL = 600  # 10 min — avoid rate limits
+CACHE_TTL = 600
+
+# Colors
+NEON_CYAN = "#00f0ff"
+NEON_PURPLE = "#bf00ff"
+NEON_GREEN = "#00ff88"
+NEON_RED = "#ff3366"
+BG_DARK = "#0a0a0f"
+CARD_BG = "#12121a"
+CARD_BORDER = "rgba(0,240,255,0.15)"
+TEXT_DIM = "#5a6070"
+TEXT_MID = "#8a8fa0"
 
 # ---------------------------------------------------------------------------
-# CSS — 超密集佈局 + mnemox.ai 風格
+# CSS — Cyberpunk / Grafana Dark
 # ---------------------------------------------------------------------------
 
-CUSTOM_CSS = """
+CYBER_CSS = f"""
 <style>
-/* 全域壓縮 */
-.block-container { padding: 0.5rem 1rem 0.5rem 1rem !important; max-width: 100% !important; }
-header[data-testid="stHeader"] { display: none !important; }
-[data-testid="stBottom"] { display: none !important; }
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
 
-/* metric 壓縮 */
-[data-testid="stMetric"] { padding: 4px 8px !important; }
-[data-testid="stMetricValue"] { font-size: 1.1rem !important; line-height: 1.2 !important; }
-[data-testid="stMetricLabel"] { font-size: 0.7rem !important; }
-[data-testid="stMetricDelta"] { font-size: 0.65rem !important; }
+/* === GLOBAL === */
+.stApp {{ background: {BG_DARK} !important; }}
+.block-container {{ padding: 0.4rem 0.8rem 0.2rem 0.8rem !important; max-width: 100% !important; }}
+header[data-testid="stHeader"] {{ display: none !important; }}
+[data-testid="stBottom"] {{ display: none !important; }}
+[data-testid="stHorizontalBlock"] {{ gap: 0.4rem !important; }}
 
-/* 標題壓縮 */
-h1 { font-size: 1.3rem !important; margin: 0 0 2px 0 !important; padding: 0 !important; }
-h2 { font-size: 0.95rem !important; margin: 6px 0 2px 0 !important; padding: 0 !important;
-     color: #4A90D9 !important; border-bottom: 1px solid #1e2a3a; padding-bottom: 2px !important; }
-h3 { font-size: 0.8rem !important; margin: 2px 0 !important; padding: 0 !important; color: #7eb8e0 !important; }
+/* === TITLE BAR === */
+.cyber-header {{
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 0; margin-bottom: 4px;
+    border-bottom: 1px solid {CARD_BORDER};
+}}
+.cyber-title {{
+    font-family: 'Orbitron', monospace; font-size: 1.15rem; font-weight: 700;
+    color: {NEON_CYAN}; letter-spacing: 2px; text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(0,240,255,0.3);
+}}
+.cyber-subtitle {{
+    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+    color: {TEXT_DIM}; letter-spacing: 1px;
+}}
 
-/* column gap 壓縮 */
-[data-testid="stHorizontalBlock"] { gap: 0.3rem !important; }
+/* === SECTION HEADERS === */
+.section-label {{
+    font-family: 'Orbitron', monospace; font-size: 0.65rem; font-weight: 700;
+    color: {NEON_PURPLE}; letter-spacing: 3px; text-transform: uppercase;
+    margin: 8px 0 4px 0; padding-bottom: 2px;
+    border-bottom: 1px solid rgba(191,0,255,0.2);
+    text-shadow: 0 0 12px rgba(191,0,255,0.3);
+}}
 
-/* dataframe 壓縮 */
-[data-testid="stDataFrame"] { font-size: 0.7rem !important; }
-[data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { padding: 1px 6px !important; }
+/* === CARDS === */
+.cyber-card {{
+    background: {CARD_BG}; border: 1px solid {CARD_BORDER};
+    border-radius: 6px; padding: 8px 10px; margin-bottom: 4px;
+    box-shadow: 0 0 8px rgba(0,240,255,0.04), inset 0 1px 0 rgba(0,240,255,0.05);
+    position: relative; overflow: hidden;
+}}
+.cyber-card::before {{
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, {NEON_CYAN}40, transparent);
+}}
+.card-title {{
+    font-family: 'Orbitron', monospace; font-size: 0.6rem; font-weight: 700;
+    color: {TEXT_MID}; letter-spacing: 1.5px; text-transform: uppercase;
+    margin-bottom: 6px;
+}}
 
-/* caption */
-.stCaption p { font-size: 0.6rem !important; margin: 0 !important; color: #666 !important; }
+/* === METRICS === */
+.neon-val {{
+    font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 700;
+    color: {NEON_CYAN}; line-height: 1;
+    text-shadow: 0 0 15px rgba(0,240,255,0.25);
+}}
+.neon-val-sm {{
+    font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700;
+    color: {NEON_CYAN}; line-height: 1;
+}}
+.neon-val-green {{ color: {NEON_GREEN} !important; text-shadow: 0 0 12px rgba(0,255,136,0.25); }}
+.neon-val-red {{ color: {NEON_RED} !important; text-shadow: 0 0 12px rgba(255,51,102,0.25); }}
+.neon-val-purple {{ color: {NEON_PURPLE} !important; text-shadow: 0 0 12px rgba(191,0,255,0.25); }}
+.metric-label {{
+    font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+    color: {TEXT_DIM}; letter-spacing: 0.5px; text-transform: uppercase;
+    margin-bottom: 1px;
+}}
+.metric-row {{ display: flex; gap: 12px; flex-wrap: wrap; }}
+.metric-item {{ min-width: 50px; }}
 
-/* divider 壓縮 */
-hr { margin: 4px 0 !important; }
+/* === PILLS === */
+.pill-row {{ display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }}
+.pill {{
+    font-family: 'JetBrains Mono', monospace; display: inline-block;
+    padding: 2px 8px; border-radius: 10px; font-size: 0.55rem; font-weight: 500;
+}}
+.pill-ok {{ background: rgba(0,255,136,0.1); color: {NEON_GREEN}; border: 1px solid rgba(0,255,136,0.25); }}
+.pill-wait {{ background: rgba(255,187,36,0.1); color: #fbbf24; border: 1px solid rgba(255,187,36,0.25); }}
+.pill-info {{ background: rgba(0,240,255,0.1); color: {NEON_CYAN}; border: 1px solid rgba(0,240,255,0.2); }}
 
-/* expander 壓縮 */
-[data-testid="stExpander"] { border: 1px solid #1e2a3a !important; }
-[data-testid="stExpander"] summary { padding: 4px 8px !important; font-size: 0.75rem !important; }
-[data-testid="stExpander"] div[data-testid="stExpanderDetails"] { padding: 4px 8px !important; }
+/* === MISC === */
+.dim-text {{ font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: {TEXT_DIM}; }}
+.footer-bar {{
+    text-align: center; font-family: 'JetBrains Mono', monospace;
+    font-size: 0.5rem; color: {TEXT_DIM}; margin-top: 4px;
+    border-top: 1px solid {CARD_BORDER}; padding-top: 3px;
+}}
+.footer-bar a {{ color: {NEON_CYAN}; text-decoration: none; }}
 
-/* 小圖表 */
-[data-testid="stVegaLiteChart"] { margin: -8px 0 !important; }
+/* === HIDE default streamlit metric (we use custom HTML) === */
+[data-testid="stMetric"] {{ display: none !important; }}
 
-/* status pills — 自訂 */
-.status-row { display: flex; flex-wrap: wrap; gap: 3px; margin: 2px 0; }
-.pill { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 0.6rem; font-weight: 500; }
-.pill-ok { background: #1a3a1a; color: #4ade80; border: 1px solid #2d5a2d; }
-.pill-wait { background: #3a3a1a; color: #fbbf24; border: 1px solid #5a5a2d; }
-.pill-pr { background: #1a2a3a; color: #60a5fa; border: 1px solid #2d4a6a; }
+/* === Plotly chart container === */
+[data-testid="stPlotlyChart"] {{ margin: -4px 0 !important; }}
 
-/* 頁尾 */
-.footer { text-align: center; font-size: 0.55rem; color: #444; margin-top: 4px; }
-.footer a { color: #4A90D9; text-decoration: none; }
+/* suppress default h1/h2/h3 */
+h1, h2, h3 {{ display: none !important; }}
 </style>
 """
 
 # ---------------------------------------------------------------------------
-# API helpers
+# API helpers (unchanged logic)
 # ---------------------------------------------------------------------------
 
 
@@ -101,7 +164,6 @@ def _gh_headers() -> dict:
 
 
 def _safe_get(url: str, **kwargs) -> requests.Response | None:
-    """GET with retry on 429."""
     for attempt in range(3):
         try:
             r = requests.get(url, timeout=10, **kwargs)
@@ -137,10 +199,7 @@ def fetch_github_traffic(repo: str) -> dict:
         return {}
     result = {}
     for kind in ("views", "clones"):
-        r = _safe_get(
-            f"https://api.github.com/repos/{repo}/traffic/{kind}",
-            headers=_gh_headers(),
-        )
+        r = _safe_get(f"https://api.github.com/repos/{repo}/traffic/{kind}", headers=_gh_headers())
         if r:
             result[kind] = r.json()
     return result
@@ -150,16 +209,12 @@ def fetch_github_traffic(repo: str) -> dict:
 def fetch_github_referrers(repo: str) -> list:
     if not GITHUB_TOKEN:
         return []
-    r = _safe_get(
-        f"https://api.github.com/repos/{repo}/traffic/popular/referrers",
-        headers=_gh_headers(),
-    )
+    r = _safe_get(f"https://api.github.com/repos/{repo}/traffic/popular/referrers", headers=_gh_headers())
     return r.json() if r else []
 
 
 @st.cache_data(ttl=CACHE_TTL)
 def fetch_pypi_all(package: str) -> dict:
-    """Single API call → derive daily + recent totals (avoids /recent 429)."""
     r = _safe_get(f"https://pypistats.org/api/packages/{package}/overall?mirrors=true")
     if not r:
         return {"daily": [], "last_day": 0, "last_week": 0, "last_month": 0}
@@ -199,176 +254,276 @@ def fetch_pr_state(repo: str, number: int) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Page setup
+# Plotly chart helper
+# ---------------------------------------------------------------------------
+
+
+def make_bar_chart(dates: list, values: list, color: str = NEON_CYAN, height: int = 80) -> go.Figure:
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=dates, y=values,
+        marker=dict(
+            color=f"rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.6)",
+            line=dict(color=color, width=1),
+        ),
+        hovertemplate="%{x|%m/%d}: %{y:,}<extra></extra>",
+    ))
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=height,
+        xaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+        yaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+        bargap=0.3,
+        showlegend=False,
+    )
+    return fig
+
+
+def make_line_chart(dates: list, values: list, color: str = NEON_CYAN, height: int = 70) -> go.Figure:
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=dates, y=values, mode="lines+markers",
+        line=dict(color=color, width=2),
+        marker=dict(color=color, size=4),
+        fill="tozeroy",
+        fillcolor=f"rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.08)",
+        hovertemplate="%{x|%m/%d}: %{y:,}<extra></extra>",
+    ))
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=height,
+        xaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+        yaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+        showlegend=False,
+    )
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# HTML helpers
+# ---------------------------------------------------------------------------
+
+
+def metric_html(label: str, value: str, css_class: str = "neon-val-sm") -> str:
+    return f'<div class="metric-item"><div class="metric-label">{label}</div><div class="{css_class}">{value}</div></div>'
+
+
+def card_open(title: str) -> str:
+    return f'<div class="cyber-card"><div class="card-title">{title}</div>'
+
+
+CARD_CLOSE = '</div>'
+
+
+# ---------------------------------------------------------------------------
+# Page
 # ---------------------------------------------------------------------------
 
 st.set_page_config(page_title="Mnemox Dashboard", page_icon="📊", layout="wide")
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+st.markdown(CYBER_CSS, unsafe_allow_html=True)
 
-# Title bar
-t1, t2 = st.columns([4, 1])
-t1.markdown("# 📊 Mnemox 全專案儀表板")
-t2.caption(f"更新 {datetime.now(timezone.utc).strftime('%H:%M UTC')}")
+now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+# === HEADER ===
+st.markdown(f'''
+<div class="cyber-header">
+    <div class="cyber-title">MNEMOX COMMAND CENTER</div>
+    <div class="cyber-subtitle">🔄 更新 {now_str} &nbsp;|&nbsp; Built by Mnemox AI</div>
+</div>
+''', unsafe_allow_html=True)
 
 # ===========================================================================
-# ROW 1: GitHub Repos (3 columns) + PyPI (2 columns) = 5 columns
+# ROW 1: GitHub Repos (3) + PyPI (2)
 # ===========================================================================
 
-st.markdown("## GitHub 專案 / PyPI 下載")
+st.markdown('<div class="section-label">GITHUB REPOS &nbsp;/&nbsp; PYPI DOWNLOADS</div>', unsafe_allow_html=True)
 
 c1, c2, c3, c4, c5 = st.columns([2, 2, 2, 1.5, 1.5])
 
 # --- GitHub repos ---
-for i, (col, repo) in enumerate(zip([c1, c2, c3], REPOS)):
+for col, repo in zip([c1, c2, c3], REPOS):
     data = fetch_github_repo(repo)
     prs = fetch_github_prs(repo)
     name = repo.split("/")[1]
 
     with col:
-        st.markdown(f"### {name}")
         if "error" in data:
-            st.caption(f"Error: {data['error']}")
+            st.markdown(f'{card_open(name)}<span class="dim-text">API Error</span>{CARD_CLOSE}', unsafe_allow_html=True)
             continue
-        m1, m2 = st.columns(2)
-        m1.metric("Stars", f"{data.get('stargazers_count', 0):,}")
-        m2.metric("Forks", f"{data.get('forks_count', 0):,}")
-        m3, m4 = st.columns(2)
-        m3.metric("Issues", data.get("open_issues_count", 0))
-        m4.metric("PRs", prs)
-        st.caption(f"{data.get('language', '')} · {data.get('pushed_at', '')[:10]}")
+
+        stars = data.get("stargazers_count", 0)
+        forks = data.get("forks_count", 0)
+        issues = data.get("open_issues_count", 0)
+        updated = data.get("pushed_at", "")[:10]
+
+        html = card_open(name)
+        html += '<div class="metric-row">'
+        html += metric_html("⭐ Stars", f"{stars:,}", "neon-val")
+        html += metric_html("🍴 Forks", f"{forks:,}", "neon-val-sm")
+        html += '</div>'
+        html += '<div class="metric-row" style="margin-top:4px">'
+        html += metric_html("Issues", str(issues), "neon-val-sm neon-val-green" if issues == 0 else "neon-val-sm neon-val-red")
+        html += metric_html("PRs", str(prs), "neon-val-sm neon-val-green" if prs == 0 else "neon-val-sm neon-val-red")
+        html += '</div>'
+        html += f'<div class="dim-text" style="margin-top:3px">{data.get("language", "")} · {updated}</div>'
+        html += CARD_CLOSE
+        st.markdown(html, unsafe_allow_html=True)
 
 # --- PyPI ---
-for i, (col, pkg) in enumerate(zip([c4, c5], PYPI_PACKAGES)):
+for col, pkg in zip([c4, c5], PYPI_PACKAGES):
     pypi = fetch_pypi_all(pkg)
-    short = pkg.replace("-protocol", "")
+    short = pkg.split("-")[0]  # "idea" / "tradememory"
 
     with col:
-        st.markdown(f"### PyPI: {short}")
-        st.metric("日下載 Daily", f"{pypi['last_day']:,}")
-        st.metric("週下載 Week", f"{pypi['last_week']:,}")
-        st.metric("月下載 Month", f"{pypi['last_month']:,}")
+        html = card_open(f"PyPI: {short}")
+        html += '<div class="metric-row">'
+        html += metric_html("日 Day", f"{pypi['last_day']:,}", "neon-val")
+        html += '</div>'
+        html += '<div class="metric-row" style="margin-top:2px">'
+        html += metric_html("週 Week", f"{pypi['last_week']:,}", "neon-val-sm neon-val-purple")
+        html += metric_html("月 Month", f"{pypi['last_month']:,}", "neon-val-sm")
+        html += '</div>'
+        html += CARD_CLOSE
+        st.markdown(html, unsafe_allow_html=True)
+
         if pypi["daily"]:
-            df = pd.DataFrame(pypi["daily"])
-            df["date"] = pd.to_datetime(df["date"])
-            df = df.set_index("date")
-            st.bar_chart(df["downloads"], height=80, use_container_width=True)
+            dates = [d["date"] for d in pypi["daily"]]
+            vals = [d["downloads"] for d in pypi["daily"]]
+            fig = make_bar_chart(dates, vals, NEON_CYAN if "idea" in pkg else NEON_PURPLE, height=65)
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 # ===========================================================================
-# ROW 2: Traffic + Referrers + Website + Trading
+# ROW 2: Traffic / Referrers / Website / Trading
 # ===========================================================================
 
-st.markdown("## 流量 Traffic / 網站 / 交易")
+st.markdown('<div class="section-label">TRAFFIC &nbsp;/&nbsp; 網站 &nbsp;/&nbsp; 交易 NG_GOLD</div>', unsafe_allow_html=True)
 
-if GITHUB_TOKEN:
-    r1, r2, r3, r4 = st.columns([2.5, 2.5, 1.5, 1.5])
+r1, r2, r3, r4 = st.columns([2.5, 2.5, 1.5, 1.5])
 
-    # --- Traffic: idea-reality-mcp ---
-    traffic_irm = fetch_github_traffic("mnemox-ai/idea-reality-mcp")
-    with r1:
-        st.markdown("### idea-reality-mcp 流量 (14d)")
-        views = traffic_irm.get("views", {})
-        clones = traffic_irm.get("clones", {})
-        a, b, c, d = st.columns(4)
-        a.metric("瀏覽 Views", f"{views.get('count', 0):,}")
-        b.metric("獨立 Unique", f"{views.get('uniques', 0):,}")
-        c.metric("複製 Clones", f"{clones.get('count', 0):,}")
-        d.metric("獨立 Unique", f"{clones.get('uniques', 0):,}")
-        # Mini chart
+# --- Traffic ---
+with r1:
+    if GITHUB_TOKEN:
+        traffic = fetch_github_traffic("mnemox-ai/idea-reality-mcp")
+        views = traffic.get("views", {})
+        clones = traffic.get("clones", {})
+        html = card_open("IDEA-REALITY-MCP 流量 14D")
+        html += '<div class="metric-row">'
+        html += metric_html("瀏覽 Views", f"{views.get('count', 0):,}", "neon-val")
+        html += metric_html("獨立 Uniq", f"{views.get('uniques', 0):,}", "neon-val-sm")
+        html += metric_html("Clone", f"{clones.get('count', 0):,}", "neon-val-sm neon-val-purple")
+        html += metric_html("獨立 Uniq", f"{clones.get('uniques', 0):,}", "neon-val-sm")
+        html += '</div>'
+        html += CARD_CLOSE
+        st.markdown(html, unsafe_allow_html=True)
         vd = views.get("views", [])
         if vd:
-            df = pd.DataFrame(vd)
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
-            df = df.set_index("timestamp")
-            st.line_chart(df["count"], height=70, use_container_width=True)
+            vdates = [v["timestamp"] for v in vd]
+            vvals = [v["count"] for v in vd]
+            fig = make_line_chart(vdates, vvals, NEON_CYAN, 60)
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    else:
+        html = card_open("GITHUB 流量")
+        html += f'<span class="dim-text">設定 GITHUB_TOKEN 啟用</span>'
+        html += CARD_CLOSE
+        st.markdown(html, unsafe_allow_html=True)
 
-    # --- Referrers ---
-    with r2:
-        st.markdown("### 來源 Top Referrers")
+# --- Referrers ---
+with r2:
+    html = card_open("來源 REFERRERS")
+    if GITHUB_TOKEN:
         refs = fetch_github_referrers("mnemox-ai/idea-reality-mcp")
         if refs:
-            for ref in refs[:6]:
-                st.caption(f"**{ref['referrer']}** — {ref['count']} views / {ref['uniques']} uniq")
+            for ref in refs[:5]:
+                pct_bar_w = min(ref["count"] / max(refs[0]["count"], 1) * 100, 100)
+                html += f'''<div style="margin:2px 0">
+                    <span class="dim-text">{ref["referrer"]}</span>
+                    <div style="display:flex;align-items:center;gap:4px">
+                        <div style="height:3px;width:{pct_bar_w}%;background:{NEON_CYAN};border-radius:2px;opacity:0.5"></div>
+                        <span class="dim-text">{ref["count"]}</span>
+                    </div>
+                </div>'''
         else:
-            st.caption("需要 push access token")
-else:
-    r1, r2, r3, r4 = st.columns([2.5, 2.5, 1.5, 1.5])
-    with r1:
-        st.markdown("### GitHub 流量")
-        st.caption("設定 GITHUB_TOKEN 啟用流量數據")
-    with r2:
-        st.markdown("### 來源 Referrers")
-        st.caption("設定 GITHUB_TOKEN 啟用")
+            html += f'<span class="dim-text">No data</span>'
+    else:
+        html += f'<span class="dim-text">需要 GITHUB_TOKEN</span>'
+    html += CARD_CLOSE
+    st.markdown(html, unsafe_allow_html=True)
 
 # --- Website ---
 with r3:
-    st.markdown("### 網站 mnemox.ai")
     web = load_website_traffic()
+    html = card_open("網站 MNEMOX.AI")
     if web:
-        st.metric("瀏覽 Views (14d)", f"{web.get('views_14d', 0):,}")
-        st.metric("獨立 Unique (14d)", f"{web.get('uniques_14d', 0):,}")
-        pages = web.get("top_pages", [])
-        for p in pages:
-            st.caption(f"{p['path']} — {p['views']}v / {p['uniques']}u")
+        html += '<div class="metric-row">'
+        html += metric_html("瀏覽 14d", f"{web.get('views_14d', 0):,}", "neon-val-sm")
+        html += metric_html("獨立 14d", f"{web.get('uniques_14d', 0):,}", "neon-val-sm")
+        html += '</div>'
+        for p in web.get("top_pages", []):
+            html += f'<div class="dim-text">{p["path"]} → {p["views"]}v / {p["uniques"]}u</div>'
     else:
-        st.caption("建立 website_traffic.json")
+        html += '<span class="dim-text">建立 website_traffic.json</span>'
+    html += CARD_CLOSE
+    st.markdown(html, unsafe_allow_html=True)
 
-# --- Trading placeholder ---
+# --- Trading ---
 with r4:
-    st.markdown("### 交易 NG_Gold")
-    st.metric("餘額 Balance", "$9,863")
-    st.metric("交易數 Trades", "7")
-    st.metric("勝率 Win Rate", "42.9%")
-    st.metric("損益 PnL", "-$69.99")
-    st.caption("Shadow Mode · 手動更新")
+    html = card_open("交易 NG_GOLD")
+    html += '<div class="metric-row">'
+    html += metric_html("餘額 Balance", "$9,863", "neon-val-sm neon-val-green")
+    html += '</div>'
+    html += '<div class="metric-row" style="margin-top:2px">'
+    html += metric_html("交易 Trades", "7", "neon-val-sm")
+    html += metric_html("勝率 WR", "42.9%", "neon-val-sm")
+    html += '</div>'
+    html += '<div class="metric-row" style="margin-top:2px">'
+    html += metric_html("損益 PnL", "-$69.99", "neon-val-sm neon-val-red")
+    html += '</div>'
+    html += f'<div class="dim-text" style="margin-top:3px">Shadow Mode · 手動更新</div>'
+    html += CARD_CLOSE
+    st.markdown(html, unsafe_allow_html=True)
 
 # ===========================================================================
-# ROW 3: PR Tracker + Distribution (compact pills)
+# ROW 3: Distribution / PR
 # ===========================================================================
 
-st.markdown("## 發布通路 Distribution / PR 追蹤")
+st.markdown('<div class="section-label">DISTRIBUTION &nbsp;/&nbsp; PR 追蹤</div>', unsafe_allow_html=True)
 
-d1, d2 = st.columns([1, 2])
+d1, d2 = st.columns([1.2, 2.8])
 
-# --- PR status ---
 with d1:
-    st.markdown("### 待處理 PR")
     pr = fetch_pr_state("punkpeye/awesome-mcp-servers", 2346)
-    st.caption(f"awesome-mcp-servers #2346 — **{pr['state']}** ({pr['comments']} comments)")
+    html = card_open("待處理 PR TRACKER")
+    state_cls = "neon-val-green" if pr["state"] == "MERGED" else ("neon-val-red" if pr["state"] == "CLOSED" else "")
+    html += f'<div class="dim-text">awesome-mcp #2346 — <span class="pill pill-info">{pr["state"]}</span> {pr["comments"]}💬</div>'
+    for name in ["ClaudeMCP #45", "mcp-get #176", "Fleur #37"]:
+        html += f'<div class="dim-text">{name} — <span class="pill pill-wait">⏳</span></div>'
+    html += CARD_CLOSE
+    st.markdown(html, unsafe_allow_html=True)
 
-    prs_to_track = [
-        ("ClaudeMCP #45", "⏳"),
-        ("mcp-get #176", "⏳"),
-        ("Fleur #37", "⏳"),
-    ]
-    for name, status in prs_to_track:
-        st.caption(f"{name} — {status}")
-
-# --- Distribution pills ---
 with d2:
-    st.markdown("### 發布平台 Channels")
-    channels_html = '<div class="status-row">'
-    ok = [("PyPI", "✅"), ("MCP Registry", "✅"), ("Smithery", "✅"),
-          ("Glama", "✅"), ("Dev.to", "✅"), ("PulseMCP", "✅"), ("MCP Market", "✅")]
-    wait = [("awesome-mcp", "⏳"), ("Marketplace", "⏳")]
-    for name, _ in ok:
-        channels_html += f'<span class="pill pill-ok">{name}</span>'
-    for name, _ in wait:
-        channels_html += f'<span class="pill pill-wait">{name}</span>'
-    channels_html += '</div>'
-    st.markdown(channels_html, unsafe_allow_html=True)
+    ok_channels = ["PyPI", "MCP Registry", "Smithery", "Glama", "Dev.to", "PulseMCP", "MCP Market"]
+    wait_channels = ["awesome-mcp", "Marketplace"]
+    html = card_open(f"發布平台 CHANNELS — {len(ok_channels)}✅ {len(wait_channels)}⏳")
+    html += '<div class="pill-row">'
+    for ch in ok_channels:
+        html += f'<span class="pill pill-ok">{ch}</span>'
+    for ch in wait_channels:
+        html += f'<span class="pill pill-wait">{ch}</span>'
+    html += '</div>'
+    html += CARD_CLOSE
+    st.markdown(html, unsafe_allow_html=True)
 
-    # Quick summary line
-    st.caption(f"已發布 Published: {len(ok)} / 待處理 Pending: {len(wait)}")
-
-# ===========================================================================
-# Footer
-# ===========================================================================
-
-st.markdown(
-    '<div class="footer">'
-    'Built by <a href="https://mnemox.ai">Mnemox AI</a> · '
-    '<a href="https://github.com/mnemox-ai/idea-reality-mcp">idea-reality-mcp</a> · '
-    '<a href="https://github.com/mnemox-ai/tradememory-protocol">tradememory-protocol</a>'
-    '</div>',
-    unsafe_allow_html=True,
-)
+# === FOOTER ===
+st.markdown(f'''
+<div class="footer-bar">
+    <a href="https://mnemox.ai">Mnemox AI</a> &nbsp;·&nbsp;
+    <a href="https://github.com/mnemox-ai/idea-reality-mcp">idea-reality-mcp</a> &nbsp;·&nbsp;
+    <a href="https://github.com/mnemox-ai/tradememory-protocol">tradememory-protocol</a>
+</div>
+''', unsafe_allow_html=True)
