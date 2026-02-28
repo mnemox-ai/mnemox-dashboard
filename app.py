@@ -22,7 +22,11 @@ import streamlit as st
 # Config
 # ---------------------------------------------------------------------------
 
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+# Support both env var (local) and st.secrets (Streamlit Cloud)
+try:
+    GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
+except Exception:
+    GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 REPOS = [
     "mnemox-ai/idea-reality-mcp",
     "mnemox-ai/tradememory-protocol",
@@ -260,49 +264,31 @@ def fetch_pr_state(repo: str, number: int) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def make_bar_chart(dates: list, values: list, color: str = NEON_CYAN, height: int = 80) -> go.Figure:
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=dates, y=values,
-        marker=dict(
-            color=f"rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.6)",
-            line=dict(color=color, width=1),
-        ),
-        hovertemplate="%{x|%m/%d}: %{y:,}<extra></extra>",
-    ))
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=0, r=0, t=0, b=0),
-        height=height,
-        xaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
-        yaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
-        bargap=0.3,
-        showlegend=False,
-    )
-    return fig
+def _color_rgba(color: str, alpha: float) -> str:
+    r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+    return f"rgba({r},{g},{b},{alpha})"
 
 
-def make_line_chart(dates: list, values: list, color: str = NEON_CYAN, height: int = 70) -> go.Figure:
+def make_sparkline(dates: list, values: list, color: str = NEON_CYAN, height: int = 50) -> go.Figure:
+    """Compact line+area chart that works at any zoom level."""
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=dates, y=values, mode="lines+markers",
-        line=dict(color=color, width=2),
-        marker=dict(color=color, size=4),
+        x=dates, y=values, mode="lines",
+        line=dict(color=color, width=2, shape="spline"),
         fill="tozeroy",
-        fillcolor=f"rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.08)",
+        fillcolor=_color_rgba(color, 0.1),
         hovertemplate="%{x|%m/%d}: %{y:,}<extra></extra>",
     ))
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=0, r=0, t=0, b=0),
+        margin=dict(l=0, r=0, t=2, b=2),
         height=height,
-        xaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
-        yaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+        xaxis=dict(showgrid=False, showticklabels=False, zeroline=False, fixedrange=True),
+        yaxis=dict(showgrid=False, showticklabels=False, zeroline=False, fixedrange=True),
         showlegend=False,
+        dragmode=False,
     )
     return fig
 
@@ -398,7 +384,7 @@ for col, pkg in zip([c4, c5], PYPI_PACKAGES):
         if pypi["daily"]:
             dates = [d["date"] for d in pypi["daily"]]
             vals = [d["downloads"] for d in pypi["daily"]]
-            fig = make_bar_chart(dates, vals, NEON_CYAN if "idea" in pkg else NEON_PURPLE, height=65)
+            fig = make_sparkline(dates, vals, NEON_CYAN if "idea" in pkg else NEON_PURPLE, height=45)
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 # ===========================================================================
@@ -428,7 +414,7 @@ with r1:
         if vd:
             vdates = [v["timestamp"] for v in vd]
             vvals = [v["count"] for v in vd]
-            fig = make_line_chart(vdates, vvals, NEON_CYAN, 60)
+            fig = make_sparkline(vdates, vvals, NEON_CYAN, 40)
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     else:
         html = card_open("GITHUB 流量")
