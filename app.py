@@ -565,15 +565,15 @@ d1, d2 = st.columns([1.2, 2.8])
 with d1:
     pr = fetch_pr_state("punkpeye/awesome-mcp-servers", 2346)
     html = card_open("待處理 PR TRACKER")
-    html += f'<div class="dim-text">awesome-mcp #2346 — <span class="pill pill-info">{pr["state"]}</span> {pr["comments"]}💬</div>'
-    for name in ["ClaudeMCP #45", "mcp-get #176", "Fleur #37"]:
+    html += f'<div class="dim-text">awesome-mcp-servers #2346 — <span class="pill pill-info">{pr["state"]}</span> {pr["comments"]}💬</div>'
+    for name in ["claude-mcp #45", "mcp-get #176", "Fleur #37", "Cursor Dir #317"]:
         html += f'<div class="dim-text">{name} — <span class="pill pill-wait">⏳</span></div>'
     html += CARD_CLOSE
     st.markdown(html, unsafe_allow_html=True)
 
 with d2:
-    ok_channels = ["PyPI", "MCP Registry", "Smithery", "Glama", "Dev.to", "PulseMCP", "MCP Market"]
-    wait_channels = ["awesome-mcp", "Marketplace"]
+    ok_channels = ["PyPI", "MCP Registry", "Smithery", "Glama", "Dev.to", "PulseMCP", "MCP Market", "OpenClaw"]
+    wait_channels = ["awesome-mcp", "Cursor Dir", "Marketplace"]
     html = card_open(f"發布平台 CHANNELS — {len(ok_channels)}✅ {len(wait_channels)}⏳")
     html += '<div class="pill-row">'
     for ch in ok_channels:
