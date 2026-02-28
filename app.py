@@ -47,7 +47,7 @@ TEXT_DIM = "#5a6070"
 TEXT_MID = "#8a8fa0"
 
 # ---------------------------------------------------------------------------
-# CSS — Cyberpunk / Grafana Dark — compressed for 1920x1080 single viewport
+# CSS — Cyberpunk / Grafana Dark — 1920x1080 single viewport
 # ---------------------------------------------------------------------------
 
 CYBER_CSS = f"""
@@ -59,7 +59,7 @@ html {{ zoom: 1.8; }}
 @media (min-width: 2400px) {{ html {{ zoom: 2.0; }} }}
 .stApp {{ background: {BG_DARK} !important; }}
 .block-container {{
-    padding: 0.2rem 0.5rem 0 0.5rem !important;
+    padding: 0.4rem 0.5rem 0 0.5rem !important;
     max-width: 100% !important;
 }}
 header[data-testid="stHeader"] {{ display: none !important; }}
@@ -108,6 +108,10 @@ header[data-testid="stHeader"] {{ display: none !important; }}
     color: {TEXT_MID}; letter-spacing: 1.5px; text-transform: uppercase;
     margin-bottom: 3px;
 }}
+.card-subtitle {{
+    font-family: 'JetBrains Mono', monospace; font-size: 0.4rem;
+    color: {TEXT_DIM}; margin-left: 4px;
+}}
 
 /* === METRICS === */
 .neon-val {{
@@ -146,7 +150,6 @@ header[data-testid="stHeader"] {{ display: none !important; }}
     margin: 0 !important;
     padding: 0 !important;
 }}
-[data-testid="stPlotlyChart"] > div {{ min-height: 40px !important; }}
 
 /* === MISC === */
 .dim-text {{ font-family: 'JetBrains Mono', monospace; font-size: 0.45rem; color: {TEXT_DIM}; }}
@@ -157,11 +160,8 @@ header[data-testid="stHeader"] {{ display: none !important; }}
 }}
 .footer-bar a {{ color: {NEON_CYAN}; text-decoration: none; }}
 
-/* === HIDE default streamlit metric === */
+/* === HIDE streamlit default elements === */
 [data-testid="stMetric"] {{ display: none !important; }}
-
-/* suppress default h1/h2/h3 */
-h1, h2, h3 {{ display: none !important; }}
 </style>
 """
 
@@ -279,23 +279,25 @@ def fetch_pr_state(repo: str, number: int) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Plotly chart helpers — compact heights for single-viewport
+# Plotly chart helpers
 # ---------------------------------------------------------------------------
 
 
 def make_pypi_chart(df: pd.DataFrame, color: str = NEON_CYAN) -> go.Figure:
-    """Bar chart for PyPI daily downloads. height=150."""
+    """Bar chart for PyPI daily downloads."""
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=df["label"], y=df["downloads"], marker_color=color,
-        text=df["downloads"].apply(lambda v: f"{v:,}" if v > 0 else ""),
-        textposition="outside",
-        textfont=dict(size=9, color="#888"),
+        texttemplate="%{y:,}",
+        textposition="inside",
+        textangle=0,
+        textfont=dict(size=9, color="#fff"),
         hovertemplate="%{x}: %{y:,}<extra></extra>",
+        cliponaxis=False,
     ))
     fig.update_layout(
         height=150,
-        margin=dict(l=25, r=5, t=12, b=20),
+        margin=dict(l=5, r=5, t=5, b=20),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(
@@ -304,11 +306,10 @@ def make_pypi_chart(df: pd.DataFrame, color: str = NEON_CYAN) -> go.Figure:
             type="category",
         ),
         yaxis=dict(
-            showgrid=True, gridcolor="rgba(255,255,255,0.04)",
-            color="#888", tickfont=dict(size=10, color="#888"),
+            showgrid=False, showticklabels=False,
         ),
         font=dict(size=10),
-        bargap=0.25,
+        bargap=0.2,
         showlegend=False,
         dragmode=False,
     )
@@ -316,8 +317,7 @@ def make_pypi_chart(df: pd.DataFrame, color: str = NEON_CYAN) -> go.Figure:
 
 
 def make_traffic_chart(timestamps: list, counts: list, color: str = NEON_CYAN) -> go.Figure:
-    """Line chart for GitHub traffic views. height=120. Only last 7 days."""
-    # Take last 7 days only
+    """Line chart for GitHub traffic views. Last 7 days only."""
     if len(timestamps) > 7:
         timestamps = timestamps[-7:]
         counts = counts[-7:]
@@ -341,7 +341,7 @@ def make_traffic_chart(timestamps: list, counts: list, color: str = NEON_CYAN) -
     y_max = max(counts) if counts else 1
     fig.update_layout(
         height=120,
-        margin=dict(l=25, r=5, t=8, b=20),
+        margin=dict(l=30, r=5, t=5, b=20),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(
@@ -362,7 +362,7 @@ def make_traffic_chart(timestamps: list, counts: list, color: str = NEON_CYAN) -
 
 
 def make_referrer_chart(refs: list, color: str = NEON_CYAN) -> go.Figure:
-    """Horizontal bar chart for referrers. height=150."""
+    """Horizontal bar chart for referrers."""
     names = [r["referrer"] for r in refs[:5]][::-1]
     values = [r["count"] for r in refs[:5]][::-1]
     fig = go.Figure()
@@ -376,13 +376,13 @@ def make_referrer_chart(refs: list, color: str = NEON_CYAN) -> go.Figure:
     ))
     fig.update_layout(
         height=150,
-        margin=dict(l=5, r=30, t=5, b=5),
+        margin=dict(l=110, r=35, t=5, b=5),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(showgrid=False, showticklabels=False),
         yaxis=dict(
             showgrid=False, color="#888",
-            tickfont=dict(size=9, color="#888"),
+            tickfont=dict(size=9, color="#aaa"),
         ),
         font=dict(size=9),
         showlegend=False,
@@ -401,8 +401,9 @@ def metric_html(label: str, value: str, css_class: str = "neon-val-sm") -> str:
     return f'<div class="metric-item"><div class="metric-label">{label}</div><div class="{css_class}">{value}</div></div>'
 
 
-def card_open(title: str) -> str:
-    return f'<div class="cyber-card"><div class="card-title">{title}</div>'
+def card_open(title: str, subtitle: str = "") -> str:
+    sub = f'<span class="card-subtitle">{subtitle}</span>' if subtitle else ""
+    return f'<div class="cyber-card"><div class="card-title">{title}{sub}</div>'
 
 
 CARD_CLOSE = '</div>'
@@ -469,9 +470,10 @@ for col, pkg in zip([c4, c5], PYPI_PACKAGES):
     df_daily = fetch_pypi_daily(pkg)
     short = pkg.split("-")[0]  # "idea" / "tradememory"
     chart_color = NEON_CYAN if "idea" in pkg else NEON_PURPLE
+    latest_date = df_daily["date"].iloc[-1] if df_daily is not None and not df_daily.empty else "?"
 
     with col:
-        html = card_open(f"PyPI: {short}")
+        html = card_open(f"PyPI: {short}", f"至 {latest_date}")
         html += '<div class="metric-row">'
         html += metric_html("日 Day", f"{summary['last_day']:,}", "neon-val")
         html += '</div>'
@@ -485,8 +487,6 @@ for col, pkg in zip([c4, c5], PYPI_PACKAGES):
         if df_daily is not None and not df_daily.empty:
             fig = make_pypi_chart(df_daily, chart_color)
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-            latest = df_daily["date"].iloc[-1]
-            st.markdown(f'<div class="dim-text">至 {latest}（延遲~2天）</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="dim-text">數據載入中...</div>', unsafe_allow_html=True)
 
@@ -498,13 +498,13 @@ st.markdown('<div class="section-label">TRAFFIC &nbsp;/&nbsp; 網站 &nbsp;/&nbs
 
 r1, r2, r3, r4 = st.columns([2.5, 2.5, 1.5, 1.5])
 
-# --- Traffic ---
+# --- Traffic (14D totals from API, 7D chart) ---
 with r1:
     if GITHUB_TOKEN:
         traffic = fetch_github_traffic("mnemox-ai/idea-reality-mcp")
         views = traffic.get("views", {})
         clones = traffic.get("clones", {})
-        html = card_open("IDEA-REALITY 流量 7D")
+        html = card_open("IDEA-REALITY 流量 14D")
         html += '<div class="metric-row">'
         html += metric_html("Views", f"{views.get('count', 0):,}", "neon-val")
         html += metric_html("Uniq", f"{views.get('uniques', 0):,}", "neon-val-sm")
