@@ -10,7 +10,7 @@ Env:    GITHUB_TOKEN (optional)
 import json
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -330,7 +330,8 @@ CARD_CLOSE = '</div>'
 st.set_page_config(page_title="Mnemox Dashboard", page_icon="📊", layout="wide")
 st.markdown(CYBER_CSS, unsafe_allow_html=True)
 
-now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+TW = timezone(timedelta(hours=8))
+now_str = datetime.now(TW).strftime("%Y-%m-%d %H:%M CST")
 
 # === HEADER ===
 st.markdown(f'''
