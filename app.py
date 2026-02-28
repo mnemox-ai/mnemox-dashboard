@@ -137,6 +137,14 @@ header[data-testid="stHeader"] {{ display: none !important; }}
 .pill-wait {{ background: rgba(255,187,36,0.1); color: #fbbf24; border: 1px solid rgba(255,187,36,0.25); }}
 .pill-info {{ background: rgba(0,240,255,0.1); color: {NEON_CYAN}; border: 1px solid rgba(0,240,255,0.2); }}
 
+/* === PLOTLY FIX — prevent zoom from crushing charts === */
+[data-testid="stPlotlyChart"] {{
+    min-height: 30px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}}
+[data-testid="stPlotlyChart"] > div {{ min-height: 30px !important; }}
+
 /* === MISC === */
 .dim-text {{ font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: {TEXT_DIM}; }}
 .footer-bar {{
@@ -270,23 +278,26 @@ def _color_rgba(color: str, alpha: float) -> str:
 
 
 def make_sparkline(dates: list, values: list, color: str = NEON_CYAN, height: int = 50) -> go.Figure:
-    """Compact line+area chart that works at any zoom level."""
+    """Compact line+area chart. Linear shape for reliability at any zoom/data size."""
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=dates, y=values, mode="lines",
-        line=dict(color=color, width=2, shape="spline"),
+        x=dates, y=values, mode="lines+markers",
+        line=dict(color=color, width=2.5, shape="linear"),
+        marker=dict(color=color, size=5),
         fill="tozeroy",
-        fillcolor=_color_rgba(color, 0.1),
+        fillcolor=_color_rgba(color, 0.15),
         hovertemplate="%{x|%m/%d}: %{y:,}<extra></extra>",
     ))
+    y_max = max(values) if values else 1
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=0, r=0, t=2, b=2),
+        margin=dict(l=0, r=0, t=4, b=4),
         height=height,
         xaxis=dict(showgrid=False, showticklabels=False, zeroline=False, fixedrange=True),
-        yaxis=dict(showgrid=False, showticklabels=False, zeroline=False, fixedrange=True),
+        yaxis=dict(showgrid=False, showticklabels=False, zeroline=False, fixedrange=True,
+                   range=[0, y_max * 1.15]),
         showlegend=False,
         dragmode=False,
     )
