@@ -228,24 +228,38 @@ def fetch_github_referrers(repo: str) -> list:
 
 
 @st.cache_data(ttl=CACHE_TTL)
-def fetch_pypi_all(package: str) -> dict:
+def fetch_pypi_daily(package: str) -> pd.DataFrame | None:
+    """Fetch 7-day daily download data. Returns DataFrame or None on failure."""
     r = _safe_get(f"https://pypistats.org/api/packages/{package}/overall?mirrors=true")
     if not r:
-        return {"daily": [], "last_day": 0, "last_week": 0, "last_month": 0}
+        return None
+    data = r.json().get("data", [])
+    rows = [{"date": d["date"], "downloads": d["downloads"]}
+            for d in data if d.get("category") == "with_mirrors"]
+    if not rows:
+        return None
+    df = pd.DataFrame(rows).sort_values("date").tail(7).reset_index(drop=True)
+    return df
+
+
+@st.cache_data(ttl=CACHE_TTL)
+def fetch_pypi_summary(package: str) -> dict:
+    """Derive day/week/month totals from daily data."""
+    r = _safe_get(f"https://pypistats.org/api/packages/{package}/overall?mirrors=true")
+    if not r:
+        return {"last_day": 0, "last_week": 0, "last_month": 0}
     data = r.json().get("data", [])
     daily = sorted(
-        [{"date": d["date"], "downloads": d["downloads"]}
-         for d in data if d.get("category") == "with_mirrors"],
-        key=lambda x: x["date"],
+        [d["downloads"] for d in data if d.get("category") == "with_mirrors"],
     )
-    last_14 = daily[-14:] if len(daily) >= 14 else daily
-    last_7 = daily[-7:] if len(daily) >= 7 else daily
-    last_30 = daily[-30:] if len(daily) >= 30 else daily
+    # pypistats returns sorted by date, take tail
+    rows = [{"date": d["date"], "downloads": d["downloads"]}
+            for d in data if d.get("category") == "with_mirrors"]
+    rows.sort(key=lambda x: x["date"])
     return {
-        "daily": last_14,
-        "last_day": last_14[-1]["downloads"] if last_14 else 0,
-        "last_week": sum(d["downloads"] for d in last_7),
-        "last_month": sum(d["downloads"] for d in last_30),
+        "last_day": rows[-1]["downloads"] if rows else 0,
+        "last_week": sum(r["downloads"] for r in rows[-7:]),
+        "last_month": sum(r["downloads"] for r in rows[-30:]),
     }
 
 
@@ -272,32 +286,47 @@ def fetch_pr_state(repo: str, number: int) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _color_rgba(color: str, alpha: float) -> str:
-    r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
-    return f"rgba({r},{g},{b},{alpha})"
-
-
-def make_sparkline(dates: list, values: list, color: str = NEON_CYAN, height: int = 50) -> go.Figure:
-    """Compact line+area chart. Linear shape for reliability at any zoom/data size."""
+def make_pypi_chart(df: pd.DataFrame, color: str = NEON_CYAN) -> go.Figure:
+    """Bar chart for PyPI daily downloads. Exactly as Sean specified."""
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=dates, y=values, mode="lines+markers",
-        line=dict(color=color, width=2.5, shape="linear"),
-        marker=dict(color=color, size=5),
-        fill="tozeroy",
-        fillcolor=_color_rgba(color, 0.15),
-        hovertemplate="%{x|%m/%d}: %{y:,}<extra></extra>",
+    fig.add_trace(go.Bar(
+        x=df["date"], y=df["downloads"], marker_color=color,
+        hovertemplate="%{x}: %{y:,}<extra></extra>",
     ))
-    y_max = max(values) if values else 1
     fig.update_layout(
-        template="plotly_dark",
+        height=120,
+        margin=dict(l=0, r=0, t=0, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=0, r=0, t=4, b=4),
-        height=height,
-        xaxis=dict(showgrid=False, showticklabels=False, zeroline=False, fixedrange=True),
-        yaxis=dict(showgrid=False, showticklabels=False, zeroline=False, fixedrange=True,
-                   range=[0, y_max * 1.15]),
+        xaxis=dict(showgrid=False, color="#666", tickfont=dict(size=9)),
+        yaxis=dict(showgrid=False, color="#666", tickfont=dict(size=9)),
+        font=dict(size=11),
+        bargap=0.3,
+        showlegend=False,
+        dragmode=False,
+    )
+    return fig
+
+
+def make_traffic_chart(timestamps: list, counts: list, color: str = NEON_CYAN) -> go.Figure:
+    """Line chart for GitHub traffic views."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=timestamps, y=counts, mode="lines+markers",
+        line=dict(color=color, width=2),
+        marker=dict(color=color, size=4),
+        fill="tozeroy",
+        fillcolor=f"rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.1)",
+        hovertemplate="%{x|%m/%d}: %{y:,}<extra></extra>",
+    ))
+    fig.update_layout(
+        height=80,
+        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(showgrid=False, color="#666", tickfont=dict(size=9)),
+        yaxis=dict(showgrid=False, color="#666", tickfont=dict(size=9)),
+        font=dict(size=11),
         showlegend=False,
         dragmode=False,
     )
@@ -377,26 +406,28 @@ for col, repo in zip([c1, c2, c3], REPOS):
 
 # --- PyPI ---
 for col, pkg in zip([c4, c5], PYPI_PACKAGES):
-    pypi = fetch_pypi_all(pkg)
+    summary = fetch_pypi_summary(pkg)
+    df_daily = fetch_pypi_daily(pkg)
     short = pkg.split("-")[0]  # "idea" / "tradememory"
+    chart_color = NEON_CYAN if "idea" in pkg else NEON_PURPLE
 
     with col:
         html = card_open(f"PyPI: {short}")
         html += '<div class="metric-row">'
-        html += metric_html("日 Day", f"{pypi['last_day']:,}", "neon-val")
+        html += metric_html("日 Day", f"{summary['last_day']:,}", "neon-val")
         html += '</div>'
         html += '<div class="metric-row" style="margin-top:2px">'
-        html += metric_html("週 Week", f"{pypi['last_week']:,}", "neon-val-sm neon-val-purple")
-        html += metric_html("月 Month", f"{pypi['last_month']:,}", "neon-val-sm")
+        html += metric_html("週 Week", f"{summary['last_week']:,}", "neon-val-sm neon-val-purple")
+        html += metric_html("月 Month", f"{summary['last_month']:,}", "neon-val-sm")
         html += '</div>'
         html += CARD_CLOSE
         st.markdown(html, unsafe_allow_html=True)
 
-        if pypi["daily"]:
-            dates = [d["date"] for d in pypi["daily"]]
-            vals = [d["downloads"] for d in pypi["daily"]]
-            fig = make_sparkline(dates, vals, NEON_CYAN if "idea" in pkg else NEON_PURPLE, height=45)
+        if df_daily is not None and not df_daily.empty:
+            fig = make_pypi_chart(df_daily, chart_color)
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        else:
+            st.markdown('<div class="dim-text">數據載入中...</div>', unsafe_allow_html=True)
 
 # ===========================================================================
 # ROW 2: Traffic / Referrers / Website / Trading
@@ -423,9 +454,11 @@ with r1:
         st.markdown(html, unsafe_allow_html=True)
         vd = views.get("views", [])
         if vd:
-            vdates = [v["timestamp"] for v in vd]
-            vvals = [v["count"] for v in vd]
-            fig = make_sparkline(vdates, vvals, NEON_CYAN, 40)
+            fig = make_traffic_chart(
+                [v["timestamp"] for v in vd],
+                [v["count"] for v in vd],
+                NEON_CYAN,
+            )
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     else:
         html = card_open("GITHUB 流量")
