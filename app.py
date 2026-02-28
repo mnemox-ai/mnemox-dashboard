@@ -572,8 +572,8 @@ with d1:
     st.markdown(html, unsafe_allow_html=True)
 
 with d2:
-    ok_channels = ["PyPI", "MCP Registry", "Smithery", "Glama", "Dev.to", "PulseMCP", "MCP Market", "OpenClaw"]
-    wait_channels = ["awesome-mcp", "Cursor Dir", "Marketplace"]
+    ok_channels = ["PyPI", "MCP Registry", "Smithery", "Glama", "Dev.to", "PulseMCP", "MCP Market", "OpenClaw", "GH Actions"]
+    wait_channels = ["awesome-mcp", "Cursor Dir"]
     html = card_open(f"發布平台 CHANNELS — {len(ok_channels)}✅ {len(wait_channels)}⏳")
     html += '<div class="pill-row">'
     for ch in ok_channels:
