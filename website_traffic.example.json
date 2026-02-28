@@ -1,0 +1,9 @@
+{
+  "views_14d": 40,
+  "uniques_14d": 8,
+  "updated_at": "2026-02-28",
+  "top_pages": [
+    {"path": "/", "views": 28, "uniques": 6},
+    {"path": "/check", "views": 12, "uniques": 4}
+  ]
+}
