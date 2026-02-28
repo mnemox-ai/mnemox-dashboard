@@ -52,8 +52,11 @@ CYBER_CSS = f"""
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
 
 /* === GLOBAL === */
+html {{ zoom: 1.5; }}
+@media (min-width: 1800px) {{ html {{ zoom: 1.75; }} }}
+@media (min-width: 2400px) {{ html {{ zoom: 2.0; }} }}
 .stApp {{ background: {BG_DARK} !important; }}
-.block-container {{ padding: 0.4rem 0.8rem 0.2rem 0.8rem !important; max-width: 100% !important; }}
+.block-container {{ padding: 0.3rem 0.6rem 0.2rem 0.6rem !important; max-width: 100% !important; }}
 header[data-testid="stHeader"] {{ display: none !important; }}
 [data-testid="stBottom"] {{ display: none !important; }}
 [data-testid="stHorizontalBlock"] {{ gap: 0.4rem !important; }}
